@@ -2,13 +2,15 @@ package decoder;
 
 public class EntropyHdr {
 
-	coeff_probs_table_t   coeff_probs;
-    mv_component_probs_t  mv_probs[2];
-    unsigned int          coeff_skip_enabled;
-    unsigned char         coeff_skip_prob;
-    unsigned char         y_mode_probs[4];
-    unsigned char         uv_mode_probs[3];
-    unsigned char         prob_inter;
-    unsigned char         prob_last;
-    unsigned char         prob_gf;
+	public int[][][][] coeff_probs = new int[Constants.BLOCK_TYPES][Constants.COEF_BANDS][Constants.PREV_COEF_CONTEXTS][Constants.ENTROPY_NODES];
+	public int[][] mv_probs = new int[Constants.MV_PROB_CNT][2];
+	public boolean coeff_skip_enabled;
+	public int coeff_skip_prob;
+	public int[] y_mode_probs = new int[4];
+	public int[] uv_mode_probs = new int[3];
+	public int prob_inter;
+	public int prob_last;
+	public int prob_gf;
+	
+	
 }

@@ -14,15 +14,13 @@ public class VP8Frame {
 		ivf_data = ivf;
 	}
 
-	public void decodeFrame(Context ctx,
-	             FileInputStream data,
-	             int            sz) throws IOException
+	public void decodeFrame(Context ctx, FileInputStream data, int sz) throws IOException
 	{
 //	    vpx_codec_err_t  res;
 	    BoolDecoder  bool = new BoolDecoder();
-	    int                  i, row, partition;
+	    int                  row, partition;
 
-	    ctx.saved_entropy_valid = 0; 
+	    ctx.saved_entropy_valid = false; 
 
 	    if (vp8_parse_frame_header(data, sz, ctx)>0)
 	      System.err.println("Failed to parse frame header");
@@ -64,25 +62,30 @@ public class VP8Frame {
 	    /* Set keyframe entropy defaults. These get updated on keyframes
 	     * regardless of the refresh_entropy setting.
 	     */
-	    if (ctx->frame_hdr.is_keyframe)
+	    if (ctx.frame_hdr.is_keyframe)
 	    {
-	        ARRAY_COPY(ctx->entropy_hdr.coeff_probs,
-	                   k_default_coeff_probs);
-	        ARRAY_COPY(ctx->entropy_hdr.mv_probs,
-	                   k_default_mv_probs);
-	        ARRAY_COPY(ctx->entropy_hdr.y_mode_probs,
-	                   k_default_y_mode_probs);
-	        ARRAY_COPY(ctx->entropy_hdr.uv_mode_probs,
-	                   k_default_uv_mode_probs);
+	    	for (int i = 0; i < Constants.BLOCK_TYPES; i++) {
+	    		System.arraycopy(Constants.k_default_coeff_probs[i]    , 0 , ctx.entropy_hdr.coeff_probs[i]   , 0 , Constants.COEF_BANDS);
+		        for (int j = 0; j < Constants.COEF_BANDS; j++) {
+		        	System.arraycopy(Constants.k_default_coeff_probs[i][j]    , 0 , ctx.entropy_hdr.coeff_probs[i][j]   , 0 , Constants.PREV_COEF_CONTEXTS);
+		            for (int k = 0; k < Constants.PREV_COEF_CONTEXTS; k++)
+	                	 System.arraycopy(Constants.k_default_coeff_probs[i][j][k]    , 0 , ctx.entropy_hdr.coeff_probs[i][j][k]   , 0 , Constants.ENTROPY_NODES);
+		        }
+	    	}
+	        System.arraycopy(Constants.k_default_mv_probs[0]	, 0 , ctx.entropy_hdr.mv_probs[0]	, 0 , Constants.MV_PROB_CNT);           
+	        System.arraycopy(Constants.k_default_mv_probs[1]	, 0 , ctx.entropy_hdr.mv_probs[1]	, 0 , Constants.MV_PROB_CNT);
+		    System.arraycopy(Constants.k_default_y_mode_probs	, 0 , ctx.entropy_hdr.y_mode_probs  , 0 , Constants.k_default_y_mode_probs.length);   
+			System.arraycopy(Constants.k_default_uv_mode_probs  , 0 , ctx.entropy_hdr.uv_mode_probs , 0 , Constants.k_default_uv_mode_probs.length); 
 	    }
-//
-//	    if (!ctx->reference_hdr.refresh_entropy)
-//	    {
-//	        ctx->saved_entropy = ctx->entropy_hdr;
-//	        ctx->saved_entropy_valid = 1;
-//	    }
-//
-//	    decode_entropy_header(ctx, &bool, &ctx->entropy_hdr);
+
+	    if (!ctx.reference_hdr.refresh_entropy)
+	    {
+	    	//need to copy entropy header
+	        ctx.saved_entropy = ctx.entropy_hdr;
+	        ctx.saved_entropy_valid = true;
+	    }
+
+	    decode_entropy_header(ctx, bool, ctx.entropy_hdr);
 //
 //	    vp8_dixie_modemv_init(ctx);
 //	    vp8_dixie_tokens_init(ctx);
@@ -350,5 +353,46 @@ public class VP8Frame {
 		hdr.sign_bias[Constants.ALTREF_FRAME] = key ? false : bool.bool_get_bit() > 0;
 		hdr.refresh_entropy = bool.bool_get_bit() > 0;
 		hdr.refresh_last = key ? true : bool.bool_get_bit() > 0;
+	}
+	
+	public void decode_entropy_header( Context    ctx, BoolDecoder       bool, EntropyHdr hdr) throws IOException {
+	    int i, j, k, l;
+
+	    /* Read coefficient probability updates */
+	    for (i = 0; i < Constants.BLOCK_TYPES; i++)
+	        for (j = 0; j < Constants.COEF_BANDS; j++)
+	            for (k = 0; k < Constants.PREV_COEF_CONTEXTS; k++)
+	                for (l = 0; l < Constants.ENTROPY_NODES; l++)
+	                    if (bool.bool_get(Constants.k_coeff_entropy_update_probs[i][j][k][l])>0)
+	                        hdr.coeff_probs[i][j][k][l] = bool.bool_get_uint(8);
+
+	    /* Read coefficient skip mode probability */
+	    hdr.coeff_skip_enabled = bool.bool_get_bit()>0;
+
+	    if (hdr.coeff_skip_enabled)
+	        hdr.coeff_skip_prob = bool.bool_get_uint(8);
+
+	    /* Parse interframe probability updates */
+	    if (!ctx.frame_hdr.is_keyframe)
+	    {
+	        hdr.prob_inter = bool.bool_get_uint(8);
+	        hdr.prob_last  = bool.bool_get_uint(8);
+	        hdr.prob_gf    = bool.bool_get_uint(8);
+
+	        if (bool.bool_get_bit()>0)
+	            for (i = 0; i < 4; i++)
+	                hdr.y_mode_probs[i] = bool.bool_get_uint(8);
+
+	        if (bool.bool_get_bit()>0)
+	            for (i = 0; i < 3; i++)
+	                hdr.uv_mode_probs[i] = bool.bool_get_uint(8);
+
+	        for (i = 0; i < 2; i++)
+	            for (j = 0; j < Constants.MV_PROB_CNT; j++)
+	                if (bool.bool_get(Constants.k_mv_entropy_update_probs[i][j])>0){
+	                    int x = bool.bool_get_uint(7);
+	                    hdr.mv_probs[i][j] = x>0 ? x << 1 : 1;
+	                }
+	    }
 	}
 }

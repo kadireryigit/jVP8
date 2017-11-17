@@ -2,7 +2,7 @@ package decoder;
 
 public class Context {
 
-	public int saved_entropy_valid;
+	public boolean saved_entropy_valid;
 	public int mb_cols;
 	public int mb_rows;
 	
@@ -45,5 +45,10 @@ public class Context {
 	public ReferenceHdr reference_hdr = new ReferenceHdr();
 	
 	
+	/*
+	 * Entropy Header
+	 */
+	public EntropyHdr entropy_hdr = new EntropyHdr();
+	public EntropyHdr saved_entropy = new EntropyHdr();
 	
 }
