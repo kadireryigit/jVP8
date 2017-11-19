@@ -6,9 +6,9 @@ public class SegmentHdr {
 	public boolean update_data;
 	public boolean update_map;
 	public boolean abs; /* 0=deltas, 1=absolute values */
-	public int[] tree_probs = new int[Constants.MB_FEATURE_TREE_PROBS];
-	public int[] lf_level = new int[Constants.MAX_MB_SEGMENTS];
-	public int[] quant_idx = new int[Constants.MAX_MB_SEGMENTS];
+	public int[] tree_probs;
+	public int[] lf_level;
+	public int[] quant_idx;
 	
 	public SegmentHdr(){
 		enabled = false;
